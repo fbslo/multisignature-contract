@@ -40,7 +40,6 @@ contract MultiSignature {
     }
     
     function modifyOwner(bytes[] memory _signatures, address _owner, bool  _added) public {
-        require(isOwner[_owner], 'Owner already exists');
         require(isApprovedOwner(_signatures, _owner, _added),  'Signatures not valid/threshold not reached');
         if (_added == true){
             require(ownersLength < 40, 'Already 40 owners');
