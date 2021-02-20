@@ -8,6 +8,7 @@ contract MultiSignature {
     mapping(address => address) public owners;
     mapping(string => bool) public alreadyApproved;
     mapping(address => bool) isSigUsed;
+    mapping(uint256 => bool) isNonceAlreadyUsed;
 
     event minted(address to, uint256 amount, string _reference);
     event ownerAdded(address owner);
@@ -40,7 +41,14 @@ contract MultiSignature {
     }
     
     function modifyOwner(bytes[] memory _signatures, address _owner, bool  _added) public {
+        require(!isNonceAlreadyUsed[_nonce], 'Nonce already used');
+        if (_added == true){ //we are adding new owner
+            require(!isOwner[_owner], 'Owner already exists');
+        } else { 
+            require(isOwner[_owner], 'Owner does not exists yet');
+        }
         require(isApprovedOwner(_signatures, _owner, _added),  'Signatures not valid/threshold not reached');
+        isNonceAlreadyUsed[_nonce] = true;
         if (_added == true){
             require(ownersLength < 40, 'Already 40 owners');
             ownersLength += 1;
@@ -104,35 +112,17 @@ contract MultiSignature {
     
     function recoverOwner(address _owner, bool _added, bytes memory _signature) public pure returns (address) {
         bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_owner, _added))));
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-    
-        if (_signature.length != 65) {
-            return (address(0));
-        }
-        
-        assembly {
-            r := mload(add(_signature, 0x20))
-            s := mload(add(_signature, 0x40))
-            v := byte(0, mload(add(_signature, 0x60)))
-        }
-        
-        if (v < 27) {
-            v += 27;
-        }
-        
-        if (v != 27 && v != 28) {
-            return (address(0));
-        } else {
-            return ecrecover(hash, v, r, s);
-        }
+        return recoverSigner(hash, _signature);
     }
     
     //Recover signer from signature
     function recoverMint(address _to, uint256 _amount, string memory _reference, bytes memory _signature) public pure returns (address) {
         bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_to, _amount, _reference))));
-        
+        return recoverSigner(hash, _signature);
+    }
+    
+    //Recover signer from signature
+    function recoverSigner(bytes32 hash, bytes memory _signature) private pure returns (address){
         bytes32 r;
         bytes32 s;
         uint8 v;
