@@ -8,7 +8,7 @@ contract MultiSignature {
     mapping(address => address) public owners;
     mapping(string => bool) public alreadyApproved;
     mapping(address => bool) isSigUsed;
-    mapping(uint256 => bool) isNonceAlreadyUsed;
+    mapping(uint256 => bool) isNonceUsed;
 
     event minted(address to, uint256 amount, string _reference);
     event ownerAdded(address owner);
@@ -41,14 +41,14 @@ contract MultiSignature {
     }
     
     function modifyOwner(bytes[] memory _signatures, address _owner, bool  _added) public {
-        require(!isNonceAlreadyUsed[_nonce], 'Nonce already used');
+        require(!isNonceUsed[_nonce], 'Nonce already used');
         if (_added == true){ //we are adding new owner
             require(!isOwner[_owner], 'Owner already exists');
         } else { 
             require(isOwner[_owner], 'Owner does not exists yet');
         }
         require(isApprovedOwner(_signatures, _owner, _added),  'Signatures not valid/threshold not reached');
-        isNonceAlreadyUsed[_nonce] = true;
+        isNonceUsed[_nonce] = true;
         if (_added == true){
             require(ownersLength < 40, 'Already 40 owners');
             ownersLength += 1;
