@@ -16,7 +16,7 @@ contract MultiSignature {
     
     constructor(address[] memory _owners, address _tokenContract) {
         require(_owners.length > 0, "Owners required");
-        require(_owners.length < 40, "Max 40 owners");
+        require(_owners.length <= 40, "Max 40 owners");
         
         for (uint256 i = 0; i < _owners.length; i++) {
             address owner = _owners[i];
