@@ -147,6 +147,10 @@ contract MultiSignature {
             return ecrecover(hash, v, r, s);
         }
     }
+    
+    function getMessageHash(address _to, uint256 _amount, string memory _reference) public pure returns(bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_to, _amount, _reference))));
+    }
 }
 
 interface ERC20 {
