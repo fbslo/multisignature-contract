@@ -32,8 +32,8 @@ contract MultiSignature {
     }
     
     function mint(bytes[] memory _signatures, address _to, uint256 _amount, string memory _reference) public {
-        require(isApprovedMint(_signatures, _to, _amount, _reference),  'Signatures not valid/threshold not reached');
         require(!alreadyApproved[_reference], 'Reference already used');
+        require(isApprovedMint(_signatures, _to, _amount, _reference),  'Signatures not valid/threshold not reached');
         alreadyApproved[_reference] = true;
         ERC20 erc20 = ERC20(tokenContract);
         erc20.mint(_to, _amount);
