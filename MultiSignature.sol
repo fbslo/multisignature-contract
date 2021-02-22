@@ -117,8 +117,7 @@ contract MultiSignature {
         require(isApprovedMigration(_signatures, _newMinter), 'Signatures not valid/threshold not reached');
         ERC20 token = ERC20(tokenContract);
         token.addMinter(_newMinter);
-        bool isMinterAdded = token.isMinter(_newMinter);
-        require(isMinterAdded, "New minter was not addded");
+        require(token.isMinter(_newMinter), "New minter was not addded");
         token.removeMinter(address(this));
         require(!token.isMinter(address(this)), "Old minter was not removed");
     }
