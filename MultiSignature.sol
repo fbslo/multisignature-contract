@@ -67,7 +67,8 @@ contract MultiSignature {
         uint isApproved = 0;
         address[40] memory signers; //max 40 signers
         for (uint i = 0; i < _signatures.length; i++) {
-            address signer = recoverMint(_to, _amount, _reference, _signatures[i]);
+            bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_to, _amount, _reference))));
+            address signer = recoverSigner(hash, _signatures[i]);
             if (isOwner[signer] && !isSigUsed[signer]){
                 isSigUsed[signer] = true;
                 signers[i] = signer;
@@ -91,7 +92,8 @@ contract MultiSignature {
         uint isApproved = 0;
         address[40] memory signers;
         for (uint i = 0; i < _signatures.length; i++) {
-            address signer = recoverOwner(_owner, _added, _signatures[i]);
+            bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_owner, _added, _nonce))));
+            address signer = recoverSigner(hash, _signatures[i]);
             if (isOwner[signer] && !isSigUsed[signer]){
                 isSigUsed[signer] = true;
                 signers[i] = signer;
@@ -110,15 +112,39 @@ contract MultiSignature {
         }
     }
     
-    function recoverOwner(address _owner, bool _added, bytes memory _signature) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_owner, _added))));
-        return recoverSigner(hash, _signature);
+    //Once migration is approved, new address will receive minter role and minter role will be removed from this contract.
+    function migrate(bytes[] memory _signatures, address _newMinter) public {
+        require(isApprovedMigration(_signatures, _newMinter), 'Signatures not valid/threshold not reached');
+        ERC20 token = ERC20(tokenContract);
+        token.addMinter(_newMinter);
+        bool isMinterAdded = token.isMinter(_newMinter);
+        require(isMinterAdded, "New minter was not addded");
+        token.removeMinter(address(this));
+        require(!token.isMinter(address(this)), "Old minter was not removed");
     }
     
-    //Recover signer from signature
-    function recoverMint(address _to, uint256 _amount, string memory _reference, bytes memory _signature) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_to, _amount, _reference))));
-        return recoverSigner(hash, _signature);
+    function isApprovedMigration(bytes[] memory _signatures, address _newMinter) public returns(bool) {
+        uint isApproved = 0;
+        address[40] memory signers; //max 40 signers
+        for (uint i = 0; i < _signatures.length; i++) {
+            bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_newMinter))));
+            address signer = recoverSigner(hash, _signatures[i]);
+            if (isOwner[signer] && !isSigUsed[signer]){
+                isSigUsed[signer] = true;
+                signers[i] = signer;
+                isApproved++;
+            }
+        }
+        //clear used signatures and clear signers array
+        for (uint i = 0; i < _signatures.length; i++){
+            isSigUsed[signers[i]] = false;
+            delete signers[i];
+        }
+        if (isApproved >= (ownersLength * 80) / 100){
+            return true;
+        } else {
+            return false;
+        }
     }
     
     //Recover signer from signature
